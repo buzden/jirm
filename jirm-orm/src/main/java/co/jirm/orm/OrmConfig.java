@@ -25,7 +25,7 @@ public class OrmConfig {
 	private final SqlObjectConfig sqlObjectConfig;
 	private final SqlWriterStrategy sqlWriterStrategy;
 	
-	private OrmConfig(SqlExecutor sqlExecutor, SqlObjectConfig sqlObjectConfig, SqlWriterStrategy sqlWriterStrategy) {
+	protected OrmConfig(SqlExecutor sqlExecutor, SqlObjectConfig sqlObjectConfig, SqlWriterStrategy sqlWriterStrategy) {
 		super();
 		this.sqlExecutor = sqlExecutor;
 		this.sqlObjectConfig = sqlObjectConfig;
@@ -33,7 +33,7 @@ public class OrmConfig {
 	}
 	
 	public static OrmConfig newInstance(SqlExecutor sqlExecutor, SqlObjectConfig objectConfig) {
-		return new OrmConfig(sqlExecutor, SqlObjectConfig.DEFAULT, SqlWriterStrategy.newInstance("\n"));
+		return new OrmConfig(sqlExecutor, objectConfig, SqlWriterStrategy.newInstance("\n"));
 	}
 	
 	public static OrmConfig newInstance(SqlExecutor sqlExecutor) {
