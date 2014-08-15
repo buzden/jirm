@@ -136,6 +136,23 @@ public class SqlParameterDefinition {
 			parameters.put(idName, parameterDefinition);
 		}
 
+        final JsonTypeInfo polyTypeInfo = k.getAnnotation(JsonTypeInfo.class);
+        if (polyTypeInfo != null) {
+            final String idName = "".equals(polyTypeInfo.property()) ? "@class" : polyTypeInfo.property();
+            final SqlParameterDefinition parameterDefinition = newSimpleInstance(
+                    config.getConverter(),
+                    idName,
+                    Integer.class,
+                    -1,
+                    config.getNamingStrategy().propertyToColumnName(idName.replaceAll("^@", "meta_")),
+                    false,
+                    false,
+                    true,
+                    Optional.<Enumerated>absent());
+
+            parameters.put(idName, parameterDefinition);
+        }
+
 		Constructor<?> cons[] = k.getDeclaredConstructors();
 		for (Constructor<?> c : cons) {
 			JsonCreator jc = c.getAnnotation(JsonCreator.class);

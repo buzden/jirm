@@ -106,24 +106,114 @@ public final class JirmDao<T> {
 				jirmFactory);
 	}
 
+    private static final JsonTypeInfo DEFAULT_TYPE_INFO = new JsonTypeInfo() {
+        @Override
+        public Id use() {
+            return Id.CLASS;
+        }
+
+        @Override
+        public As include() {
+            return As.PROPERTY;
+        }
+
+        @Override
+        public String property() {
+            return "";
+        }
+
+        @Override
+        public Class<?> defaultImpl() {
+            return com.fasterxml.jackson.annotation.JsonTypeInfo.None.class;
+        }
+
+        @Override
+        public boolean visible() {
+            return false;
+        }
+
+        @Override
+        public Class<? extends Annotation> annotationType() {
+            return JsonTypeInfo.class;
+        }
+    };
+    private static final String DEFAULT_TYPE_INFO_PROPERTY = "@class";
+
 	private LinkedHashMap<String, Object> toLinkedHashMap(T t, boolean bulkInsert, ForeignAct foreignAct) {
 		LinkedHashMap<String, Object> m = config.getObjectMapper().convertObjectToSqlMap(t);
 		/*
 		 * Replace the complex objects with there ids.
 		 */
 		for(SqlParameterDefinition pd : definition.getManyToOneParameters().values()) {
-			if (pd.getObjectDefinition().isPresent() 
+			if (pd.getObjectDefinition().isPresent()
 					&& pd.getObjectDefinition().get().getObjectDefintion().idParameter().isPresent()) {
-				SqlParameterDefinition idDef = 
-						pd.getObjectDefinition().get().getObjectDefintion().idParameter().get();
+                SqlParameterDefinition idDef = pd.getObjectDefinition().get().getObjectDefintion().idParameter().get();
 				NestedKeyValue<Object> nkv =  ObjectMapUtils.getNestedKeyValue(m, pd.getParameterName(), idDef.getParameterName());
 				if (nkv.isPresent()) {
 					/*
 					 * TODO: We only set it if the object is actually present. ie do you really want to set null?
 					 */
-					actForeign(pd.getParameterType(), m.get(pd.getParameterName()), foreignAct);
+                    final Class<?> actualClass;
 
-					m.put(pd.getParameterName(), idDef.convertToSql(nkv.object));
+                    // trying to manage the @JsonTypeInfo traces.
+                    final JsonTypeInfo polyTypeInfo = pd.getParameterType().isAnnotationPresent(JsonTypeInfo.class) ?
+                            pd.getParameterType().getAnnotation(JsonTypeInfo.class) :
+                            DEFAULT_TYPE_INFO;
+                    if (polyTypeInfo != null) {
+                        if (polyTypeInfo.use() != JsonTypeInfo.Id.CLASS) {
+                            // not supported yet.
+
+                            throw new IllegalArgumentException("Json type info id " + polyTypeInfo.use() +
+                                    " of the parameter " + pd.getParameterName() + " is not supported");
+                        }
+
+                        final String typeInfoProperty = "".equals(polyTypeInfo.property()) ? DEFAULT_TYPE_INFO_PROPERTY : polyTypeInfo.property();
+
+                        final String actualClassName;
+                        if (polyTypeInfo.include() == JsonTypeInfo.As.PROPERTY) {
+                            final Object nestedObject = m.get(pd.getParameterName());
+                            if (nestedObject instanceof Map) {
+                                final NestedKeyValue<String> typeInfoNKV = ObjectMapUtils.getNestedKeyValue((Map) nestedObject, typeInfoProperty);
+
+                                if (typeInfoNKV.isPresent()) {
+                                    actualClassName = typeInfoNKV.object;
+                                } else {
+                                    actualClassName = null;
+                                }
+                            } else {
+                                actualClassName = null;
+                            }
+                        } else if (polyTypeInfo.include() == JsonTypeInfo.As.EXTERNAL_PROPERTY) {
+                            actualClassName = m.get(typeInfoProperty).toString();
+                        } else {
+                            // not supported yet.
+
+                            throw new IllegalArgumentException("Json type info placement " + polyTypeInfo.include() +
+                                    " of the parameter " + pd.getParameterName() + " is not supported");
+                        }
+
+                        if (actualClassName != null) {
+                            Class<?> clazz = null;
+                            try {
+                                clazz = Thread.currentThread().getContextClassLoader().loadClass(actualClassName);
+                            } catch (final ClassNotFoundException ignored) {
+                            }
+
+                            actualClass = clazz;
+                        } else {
+                            actualClass = null;
+                        }
+                    } else {
+                        actualClass = null;
+                    }
+
+                    // acting with the formal (not actual) parameter type got from the parameter definition (pd var) if actual is not known.
+                    final Class<?> parameterClass = actualClass != null ? actualClass : pd.getParameterType();
+
+					actForeign(parameterClass, m.get(pd.getParameterName()), foreignAct);
+
+                    // assuming the key (nkv.object) can be put as is.
+					m.put(pd.getParameterName(), idDef != null ? idDef.convertToSql(nkv.object) : nkv.object);
 				}
 				else if (bulkInsert) {
 					//TODO default annotation perhaps here?
