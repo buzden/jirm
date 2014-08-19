@@ -37,6 +37,7 @@ import javax.persistence.Version;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 
 import static co.jirm.core.util.JirmPrecondition.check;
@@ -155,6 +156,19 @@ public class SqlParameterDefinition {
 						String value = p.value();
 						final SqlParameterDefinition definition = parameterDef(config, k, value, parameterType, i);
 						parameters.put(value, definition);
+					} else if (JsonTypeInfo.class.equals(a.annotationType())) {
+						// todo to think whether to check that parameter annotated with 'typeinfo' is annotated with 'property'
+
+						final JsonTypeInfo typeInfo = (JsonTypeInfo) a;
+
+						final String typeParameterName = typeInfo.property(); // todo to manage null and "".
+						final String typeColumnName = typeParameterName.replaceAll("^@", "meta_");
+
+						// todo to check 'typeInfo.include' and 'typeInfo.use'.
+
+						// todo probably is should be created using newSimpleInstance().
+						SqlParameterDefinition definition = parameterDef(config, k, typeColumnName, String.class, -1);
+						parameters.put(typeParameterName, definition);
 					}
 				}
 			}
