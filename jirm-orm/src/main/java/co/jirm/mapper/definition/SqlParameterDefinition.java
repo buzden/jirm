@@ -161,12 +161,30 @@ public class SqlParameterDefinition {
 
 						final JsonTypeInfo typeInfo = (JsonTypeInfo) a;
 
-						final String typeParameterName = typeInfo.property(); // todo to manage null and "".
+						final String typeParameterName = typeInfo.property();
+						{
+							String errorMessage = "";
+
+							if ("".equals(typeParameterName)) {
+								errorMessage += "type info \"property\" value name must be set, ";
+							}
+							if (typeInfo.include() != JsonTypeInfo.As.EXTERNAL_PROPERTY) {
+								errorMessage += "type info \"include\" value must be set to \"JsonTypeInfo.As.EXTERNAL_PROPERTY\", ";
+							}
+							if (typeInfo.use() != JsonTypeInfo.Id.CLASS) {
+								errorMessage += "type info \"use\" must be set to \"JsonTypeInfo.Id.CLASS\", ";
+							}
+
+							if (!"".equals(errorMessage)) {
+//								errorMessage = errorMessage.replaceFirst(", $", "for the " + value + " property of the class " + k.getName());
+								errorMessage = errorMessage.replaceFirst(", $", "for one of the properties of the class " + k.getName());
+
+								throw new RuntimeException(errorMessage);
+							}
+						}
+
 						final String typeColumnName = typeParameterName.replaceAll("^@", "meta_");
 
-						// todo to check 'typeInfo.include' and 'typeInfo.use'.
-
-						// todo probably is should be created using newSimpleInstance().
 						SqlParameterDefinition definition = parameterDef(config, k, typeColumnName, String.class, -1);
 						parameters.put(typeParameterName, definition);
 					}
