@@ -185,7 +185,16 @@ public class SqlParameterDefinition {
 
 						final String typeColumnName = typeParameterName.replaceAll("^@", "meta_");
 
-						SqlParameterDefinition definition = parameterDef(config, k, typeColumnName, String.class, -1);
+						SqlParameterDefinition definition = newSimpleInstance(
+								config.getConverter(),
+								typeParameterName,
+								String.class,
+								-2,
+								typeColumnName,
+								false,
+								false,
+								true,
+								Optional.<Enumerated>absent());
 						parameters.put(typeParameterName, definition);
 					}
 				}
