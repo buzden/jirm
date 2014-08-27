@@ -22,11 +22,13 @@ import static com.google.common.collect.Iterators.peekingIterator;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import co.jirm.core.builder.QueryForNumber;
 import co.jirm.core.builder.TypedQueryFor;
@@ -117,6 +119,7 @@ public final class JirmDao<T> {
 		/*
 		 * Replace the complex objects with there ids.
 		 */
+		final Set<String> workedParameters = new HashSet<String>();
 		for(SqlParameterDefinition pd : definition.getManyToOneParameters().values()) {
 			if (pd.getObjectDefinition().isPresent() 
 					&& pd.getObjectDefinition().get().getObjectDefintion().idParameter().isPresent()) {
@@ -131,6 +134,7 @@ public final class JirmDao<T> {
 					actForeign(actualClass != null ? actualClass : pd.getParameterType(), m.get(pd.getParameterName()), foreignAct);
 
 					m.put(pd.getParameterName(), idDef.convertToSql(nkv.object));
+					workedParameters.add(pd.getParameterName());
 				}
 				else if (bulkInsert) {
 					//TODO default annotation perhaps here?
@@ -139,6 +143,28 @@ public final class JirmDao<T> {
 				}
 			}
 		}
+		for (SqlParameterDefinition pd : definition.getParameters().values()) {
+			if (workedParameters.contains(pd.getParameterName())) {
+				continue;
+			}
+
+			final Object pRawValue = m.get(pd.getParameterName());
+			if (pRawValue instanceof Map) {
+				@SuppressWarnings("unchecked")
+				final Map<String, Object> pv = (Map<String, Object>) pRawValue;
+
+				final Object potentialDefaultId = pv.get("@id");
+				if (potentialDefaultId instanceof Integer) {
+					final int id = (Integer) potentialDefaultId;
+
+					final Class<?> actualClass = getActualClass(t.getClass(), pd, m);
+					if (actualClass != null) {
+						actForeign(actualClass, m.get(pd.getParameterName()), foreignAct);
+						m.put(pd.getParameterName(), id);
+					}
+                }
+			}
+        }
 		for(Entry<String,Object> e : m.entrySet()) {
 			Optional<SqlParameterDefinition> d = definition.resolveParameter(e.getKey());
 			if (d.isPresent()) {
