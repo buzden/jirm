@@ -19,6 +19,9 @@ import static co.jirm.core.util.JirmPrecondition.check;
 import static com.google.common.collect.Iterators.partition;
 import static com.google.common.collect.Iterators.peekingIterator;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -45,6 +48,9 @@ import co.jirm.orm.builder.update.UpdateObjectBuilder;
 import co.jirm.orm.builder.update.UpdateRootClauseBuilder;
 import co.jirm.orm.writer.SqlWriterStrategy;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
@@ -121,7 +127,8 @@ public final class JirmDao<T> {
 					/*
 					 * TODO: We only set it if the object is actually present. ie do you really want to set null?
 					 */
-					actForeign(pd.getParameterType(), m.get(pd.getParameterName()), foreignAct);
+					final Class<?> actualClass = getActualClass(t.getClass(), pd, m);
+					actForeign(actualClass != null ? actualClass : pd.getParameterType(), m.get(pd.getParameterName()), foreignAct);
 
 					m.put(pd.getParameterName(), idDef.convertToSql(nkv.object));
 				}
@@ -154,6 +161,40 @@ public final class JirmDao<T> {
 		return m;
 				
 	}
+
+    private Class<?> getActualClass(
+            final Class<?> containerClass,
+            final SqlParameterDefinition parameterDefinition,
+            final LinkedHashMap<String, Object> m) {
+        for (final Constructor<?> c : containerClass.getConstructors()) {
+            final JsonCreator jc = c.getAnnotation(JsonCreator.class);
+            if (jc == null)
+                continue;
+            final Annotation[][] aas = c.getParameterAnnotations();
+            if (aas == null || aas.length == 0)
+                continue;
+            for (final Annotation[] aa : aas) {
+                final Map<Class<?>, Annotation> as = new HashMap<Class<?>, Annotation>();
+                for (final Annotation a : aa) {
+                    as.put(a.getClass(), a);
+                }
+
+                final JsonProperty prop = (JsonProperty) as.get(JsonProperty.class);
+
+                if (prop != null && prop.value().equals(parameterDefinition.getParameterName())) {
+                    final JsonTypeInfo typeInfo = (JsonTypeInfo) as.get(JsonTypeInfo.class);
+                    if (typeInfo != null) {
+                        try {
+                            return Thread.currentThread().getContextClassLoader().loadClass(m.get(typeInfo.property()).toString());
+                        } catch (final ClassNotFoundException ignored) {
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
 
 	private void actForeign(final Class<?> clazz, final Object object, ForeignAct foreignAct) {
 		if (object != null && jirmFactory.isPresent()) {
