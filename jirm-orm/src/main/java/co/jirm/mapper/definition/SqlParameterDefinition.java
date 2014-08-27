@@ -120,7 +120,7 @@ public class SqlParameterDefinition {
 	static Map<String, SqlParameterDefinition> getSqlBeanParameters(Class<?> k, SqlObjectConfig config) {
 		Map<String, SqlParameterDefinition> parameters = new LinkedHashMap<String, SqlParameterDefinition>();
 
-		final JsonIdentityInfo classIdentityInfo = k.getAnnotation(JsonIdentityInfo.class);
+		final JsonIdentityInfo classIdentityInfo = getAnnotationDeep(k, JsonIdentityInfo.class);
 		if (classIdentityInfo != null && classIdentityInfo.generator() == ObjectIdGenerators.IntSequenceGenerator.class) {
 			final String idName = classIdentityInfo.property();
 			final SqlParameterDefinition parameterDefinition = newSimpleInstance(
@@ -205,6 +205,24 @@ public class SqlParameterDefinition {
 				"No SQL columns/parameters found for: {}", k);
 		return parameters;
 	}
+
+    private static <T extends Annotation> T getAnnotationDeep(final Class<?> startClass, final Class<T> annotationType) {
+        for (Class<?> curr = startClass; curr != null; curr = curr.getSuperclass()) {
+            final T direct = curr.getAnnotation(annotationType);
+            if (direct != null) {
+                return direct;
+            } else {
+                for (final Class<?> interfaceClass : startClass.getInterfaces()) {
+                    final T i = interfaceClass.getAnnotation(annotationType);
+                    if (i != null) {
+                        return i;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
 
 	static boolean isClassComplex(final Class<?> k) {
 		if (k.isAnnotationPresent(JsonIdentityInfo.class)) {
