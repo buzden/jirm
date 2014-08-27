@@ -211,7 +211,12 @@ public final class JirmDao<T> {
                     final JsonTypeInfo typeInfo = (JsonTypeInfo) as.get(JsonTypeInfo.class);
                     if (typeInfo != null) {
                         try {
-                            return Thread.currentThread().getContextClassLoader().loadClass(m.get(typeInfo.property()).toString());
+                            final String className = m.get(typeInfo.property()).toString();
+                            final Class<?> res = Thread.currentThread().getContextClassLoader().loadClass(className);
+
+                            m.put(typeInfo.property(), config.getNamingStrategy().classToTableName(className));
+
+                            return res;
                         } catch (final ClassNotFoundException ignored) {
                         }
                     }
