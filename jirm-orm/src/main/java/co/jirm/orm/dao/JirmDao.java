@@ -174,9 +174,9 @@ public final class JirmDao<T> {
             if (aas == null || aas.length == 0)
                 continue;
             for (final Annotation[] aa : aas) {
-                final Map<Class<?>, Annotation> as = new HashMap<Class<?>, Annotation>();
+                final Map<Class<? extends Annotation>, Annotation> as = new HashMap<Class<? extends Annotation>, Annotation>();
                 for (final Annotation a : aa) {
-                    as.put(a.getClass(), a);
+                    as.put(a.annotationType(), a);
                 }
 
                 final JsonProperty prop = (JsonProperty) as.get(JsonProperty.class);
