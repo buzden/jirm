@@ -51,6 +51,7 @@ import co.jirm.orm.builder.update.UpdateRootClauseBuilder;
 import co.jirm.orm.writer.SqlWriterStrategy;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.google.common.base.Function;
@@ -153,12 +154,12 @@ public final class JirmDao<T> {
 				@SuppressWarnings("unchecked")
 				final Map<String, Object> pv = (Map<String, Object>) pRawValue;
 
-				final Object potentialDefaultId = pv.get("@id");
-				if (potentialDefaultId instanceof Integer) {
-					final int id = (Integer) potentialDefaultId;
+				final Class<?> actualClass = getActualClass(t.getClass(), pd, m);
+				if (actualClass != null) {
+					final JsonIdentityInfo idInfo = SqlParameterDefinition.getAnnotationDeep(actualClass, JsonIdentityInfo.class);
+					if (idInfo != null) {
+						final Object id = pv.get(idInfo.property());
 
-					final Class<?> actualClass = getActualClass(t.getClass(), pd, m);
-					if (actualClass != null) {
 						actForeign(actualClass, m.get(pd.getParameterName()), foreignAct);
 						m.put(pd.getParameterName(), id);
 					}

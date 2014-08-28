@@ -206,7 +206,7 @@ public class SqlParameterDefinition {
 		return parameters;
 	}
 
-    private static <T extends Annotation> T getAnnotationDeep(final Class<?> startClass, final Class<T> annotationType) {
+    public static <T extends Annotation> T getAnnotationDeep(final Class<?> startClass, final Class<T> annotationType) {
         for (Class<?> curr = startClass; curr != null; curr = curr.getSuperclass()) {
             final T direct = curr.getAnnotation(annotationType);
             if (direct != null) {
