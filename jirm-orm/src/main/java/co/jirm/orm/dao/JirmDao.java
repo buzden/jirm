@@ -131,7 +131,7 @@ public final class JirmDao<T> {
 					/*
 					 * TODO: We only set it if the object is actually present. ie do you really want to set null?
 					 */
-					final Class<?> actualClass = getActualClass(t.getClass(), pd, m);
+					final Class<?> actualClass = getActualClass(pd, m);
 					actForeign(actualClass != null ? actualClass : pd.getParameterType(), m.get(pd.getParameterName()), foreignAct);
 
 					m.put(pd.getParameterName(), idDef.convertToSql(nkv.object));
@@ -154,7 +154,7 @@ public final class JirmDao<T> {
 				@SuppressWarnings("unchecked")
 				final Map<String, Object> pv = (Map<String, Object>) pRawValue;
 
-				final Class<?> actualClass = getActualClass(t.getClass(), pd, m);
+				final Class<?> actualClass = getActualClass(pd, m);
 				if (actualClass != null) {
 					final JsonIdentityInfo idInfo = SqlParameterDefinition.getAnnotationDeep(actualClass, JsonIdentityInfo.class);
 					if (idInfo != null) {
@@ -190,10 +190,9 @@ public final class JirmDao<T> {
 	}
 
     private Class<?> getActualClass(
-            final Class<?> containerClass,
             final SqlParameterDefinition parameterDefinition,
             final LinkedHashMap<String, Object> m) {
-        for (final Constructor<?> c : containerClass.getConstructors()) {
+        for (final Constructor<?> c : definition.getObjectType().getConstructors()) {
             final JsonCreator jc = c.getAnnotation(JsonCreator.class);
             if (jc == null)
                 continue;
