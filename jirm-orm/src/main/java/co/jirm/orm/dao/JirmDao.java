@@ -192,7 +192,7 @@ public final class JirmDao<T> {
     private Class<?> getActualClass(
             final SqlParameterDefinition parameterDefinition,
             final LinkedHashMap<String, Object> m) {
-        for (final Constructor<?> c : definition.getObjectType().getConstructors()) {
+        for (final Constructor<?> c : definition.getObjectType().getDeclaredConstructors()) {
             final JsonCreator jc = c.getAnnotation(JsonCreator.class);
             if (jc == null)
                 continue;
