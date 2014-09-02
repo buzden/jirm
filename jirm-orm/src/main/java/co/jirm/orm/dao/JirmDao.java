@@ -212,9 +212,13 @@ public final class JirmDao<T> {
                     if (typeInfo != null) {
                         try {
                             final String className = m.get(typeInfo.property()).toString();
-                            final Class<?> res = Thread.currentThread().getContextClassLoader().loadClass(className);
+                            Class<?> res = Thread.currentThread().getContextClassLoader().loadClass(className);
 
-                            m.put(typeInfo.property(), config.getNamingStrategy().classToTableName(className));
+                            while (res.isAnonymousClass()) {
+                                res = res.getSuperclass();
+                            }
+
+                            m.put(typeInfo.property(), config.getNamingStrategy().classToTableName(res.getName()));
 
                             return res;
                         } catch (final ClassNotFoundException ignored) {
